@@ -9,38 +9,49 @@ import (
 
 	"EcoNode/internal/config"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func NewPostgresPool(ctx context.Context, cfg config.DatabaseConfig) (*pgxpool.Pool, error) {
-	poolConfig, err := pgxpool.ParseConfig(buildConnectionURL(cfg))
+func NewPostgresConnection(ctx context.Context, cfg config.DatabaseConfig) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(buildConnectionURL(cfg)), &gorm.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("parse database connection settings: %w", err)
+		return nil, fmt.Errorf("open database connection: %w", err)
 	}
 
-	poolConfig.MaxConns = int32(cfg.MaxConns)
-	poolConfig.ConnConfig.ConnectTimeout = cfg.ConnectTimeout
-
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("create database pool: %w", err)
+		return nil, fmt.Errorf("access sql database handle: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
+	sqlDB.SetMaxOpenConns(cfg.MaxConns)
+
+	if err := sqlDB.PingContext(ctx); err != nil {
+		_ = sqlDB.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	return pool, nil
+	return db, nil
+}
+
+func AutoMigrate(db *gorm.DB, models ...any) error {
+	if err := db.AutoMigrate(models...); err != nil {
+		return fmt.Errorf("auto migrate schema: %w", err)
+	}
+
+	return nil
 }
 
 func buildConnectionURL(cfg config.DatabaseConfig) string {
 	connectionURL := url.URL{
-		Scheme:   "postgres",
-		User:     url.UserPassword(cfg.User, cfg.Password),
-		Host:     net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
-		Path:     "/" + cfg.Name,
-		RawQuery: url.Values{"sslmode": {cfg.SSLMode}}.Encode(),
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.User, cfg.Password),
+		Host:   net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
+		Path:   "/" + cfg.Name,
+		RawQuery: url.Values{
+			"sslmode":         {cfg.SSLMode},
+			"connect_timeout": {strconv.Itoa(int(cfg.ConnectTimeout.Seconds()))},
+		}.Encode(),
 	}
 
 	return connectionURL.String()
