@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="AgentCommitMessageProject"><![CDATA[{
-  "mode": "CUSTOM"
+  "mode": "CUSTOM",
+  "instruction": "You are a commit message generator.\n\nAnalyze the staged changes and generate a commit message following the Conventional Commits specification.\n\nStructure:\n- Line 1: commit type + short description\n- Blank line\n- Line 3: \"details:\" followed by a concise summary of what was changed\n\nRules:\n- Allowed types: feat, fix, docs, style, refactor, perf, test, chore, build, ci.\n- Choose the most appropriate type based on the changes.\n- Use the imperative form in English (e.g. add, fix, update, remove).\n- Be concise and objective.\n- Avoid overly verbose descriptions or unnecessary details.\n- Do NOT include emojis.\n- Do NOT include file names unless strictly necessary.\n- Details should mention key functions, logic, or behaviors that were modified.\n- Do NOT exceed 3 bullet points in details.\n- Output only the commit message.\n\nFormat example:\nfix: correct bank account validation\n\ndetails:\n- adjust validation logic in validateBankAccount\n- handle empty account number scenario\n"
 }]]></component>
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
