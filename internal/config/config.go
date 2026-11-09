@@ -26,14 +26,19 @@ const (
 var validDatabaseSSLModes = []string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Auth     AuthConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	Auth       AuthConfig
+	Kubernetes KubernetesConfig
 }
 
 type AuthConfig struct {
 	JWTSecret string
 	JWTTTL    time.Duration
+}
+
+type KubernetesConfig struct {
+	KubeconfigPath string
 }
 
 type ServerConfig struct {
@@ -79,6 +84,9 @@ func Load() (Config, error) {
 		Auth: AuthConfig{
 			JWTSecret: reader.secret("JWT_SECRET", minJWTSecretLength),
 			JWTTTL:    reader.positiveDuration("JWT_TTL", defaultJWTTTL),
+		},
+		Kubernetes: KubernetesConfig{
+			KubeconfigPath: reader.withFallback("KUBECONFIG", ""),
 		},
 	}
 
