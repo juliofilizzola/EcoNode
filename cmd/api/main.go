@@ -6,8 +6,12 @@ import (
 	"log"
 
 	"EcoNode/internal/config"
+	"EcoNode/internal/controller"
 	"EcoNode/internal/database"
+	"EcoNode/internal/middleware"
+	"EcoNode/internal/repository"
 	"EcoNode/internal/route"
+	"EcoNode/internal/service"
 )
 
 func main() {
@@ -25,13 +29,28 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Database.ConnectTimeout)
 	defer cancel()
 
-	pool, err := database.NewPostgresPool(ctx, cfg.Database)
+	db, err := database.NewPostgresConnection(ctx, cfg.Database)
 	if err != nil {
 		return fmt.Errorf("connect to database: %w", err)
 	}
-	defer pool.Close()
 
-	engine := route.SetupEngine()
+	if err := database.AutoMigrate(db, &repository.User{}); err != nil {
+		return fmt.Errorf("migrate database: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Errorf("access sql database handle: %w", err)
+	}
+	defer sqlDB.Close()
+
+	userRepository := repository.NewUserRepository(db)
+	tokenService := service.NewJWTTokenService(cfg.Auth.JWTSecret, cfg.Auth.JWTTTL)
+	authService := service.NewAuthService(userRepository, tokenService)
+	authController := controller.NewAuthController(authService)
+	authenticate := middleware.Authenticate(tokenService)
+
+	engine := route.SetupEngine(authController, authenticate)
 
 	return engine.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 }
