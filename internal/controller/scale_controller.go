@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"EcoNode/internal/dto"
-	"EcoNode/internal/repository"
+	"EcoNode/internal/integrations/kubernetes"
 	"EcoNode/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -78,7 +78,7 @@ func (c *ScaleController) ScaleDeployment(ctx *gin.Context) {
 
 	deployment, err := c.scaleService.ScaleDeployment(ctx.Request.Context(), path.Namespace, path.Name, *request.Replicas)
 	if err != nil {
-		if errors.Is(err, repository.ErrDeploymentNotFound) {
+		if errors.Is(err, kubernetes.ErrDeploymentNotFound) {
 			ctx.JSON(http.StatusNotFound, dto.ErrorResponse{Message: "deployment not found"})
 			return
 		}
@@ -94,7 +94,7 @@ func (c *ScaleController) ScaleDeployment(ctx *gin.Context) {
 	})
 }
 
-func toDeploymentResponse(deployment repository.Deployment) dto.DeploymentResponse {
+func toDeploymentResponse(deployment kubernetes.Deployment) dto.DeploymentResponse {
 	return dto.DeploymentResponse{
 		Namespace:         deployment.Namespace,
 		Name:              deployment.Name,
