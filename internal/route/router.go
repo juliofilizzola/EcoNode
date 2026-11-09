@@ -1,10 +1,15 @@
 package route
 
-import "github.com/gin-gonic/gin"
+import (
+	"EcoNode/internal/controller"
 
-func SetupEngine() *gin.Engine {
+	"github.com/gin-gonic/gin"
+)
+
+func SetupEngine(authController *controller.AuthController, authenticate gin.HandlerFunc) *gin.Engine {
 	engine := gin.Default()
-	auth(engine)
 	health(engine)
+	authRoutes(engine, authController)
+	scaleRoutes(engine, authenticate)
 	return engine
 }
