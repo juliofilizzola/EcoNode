@@ -6,10 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupEngine(authController *controller.AuthController, authenticate gin.HandlerFunc) *gin.Engine {
+func SetupEngine(authController *controller.AuthController, scaleController *controller.ScaleController, authenticate gin.HandlerFunc) *gin.Engine {
 	engine := gin.Default()
 	health(engine)
 	authRoutes(engine, authController)
-	scaleRoutes(engine, authenticate)
+	scaleRoutes(engine, authenticate, scaleController)
 	return engine
 }
