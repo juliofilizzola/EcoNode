@@ -8,6 +8,7 @@ import (
 	"EcoNode/internal/config"
 	"EcoNode/internal/controller"
 	"EcoNode/internal/database"
+	"EcoNode/internal/integrations/kubernetes"
 	"EcoNode/internal/middleware"
 	"EcoNode/internal/repository"
 	"EcoNode/internal/route"
@@ -44,13 +45,23 @@ func run() error {
 	}
 	defer sqlDB.Close()
 
+	clientset, err := kubernetes.NewClientset(cfg.Kubernetes.KubeconfigPath)
+	if err != nil {
+		return fmt.Errorf("connect to kubernetes: %w", err)
+	}
+
 	userRepository := repository.NewUserRepository(db)
+	deploymentGateway := kubernetes.NewDeploymentGateway(clientset)
+
 	tokenService := service.NewJWTTokenService(cfg.Auth.JWTSecret, cfg.Auth.JWTTTL)
 	authService := service.NewAuthService(userRepository, tokenService)
+	scaleService := service.NewScaleService(deploymentGateway)
+
 	authController := controller.NewAuthController(authService)
+	scaleController := controller.NewScaleController(scaleService)
 	authenticate := middleware.Authenticate(tokenService)
 
-	engine := route.SetupEngine(authController, authenticate)
+	engine := route.SetupEngine(authController, scaleController, authenticate)
 
 	return engine.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 }
