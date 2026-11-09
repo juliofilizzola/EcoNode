@@ -18,6 +18,8 @@ const (
 	defaultDatabaseSSLMode        = "disable"
 	defaultDatabaseMaxConns       = 10
 	defaultDatabaseConnectTimeout = 5 * time.Second
+	defaultJWTTTL                 = 15 * time.Minute
+	minJWTSecretLength            = 32
 	maxPortNumber                 = 65535
 )
 
@@ -26,6 +28,12 @@ var validDatabaseSSLModes = []string{"disable", "allow", "prefer", "require", "v
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
+	Auth     AuthConfig
+}
+
+type AuthConfig struct {
+	JWTSecret string
+	JWTTTL    time.Duration
 }
 
 type ServerConfig struct {
@@ -68,6 +76,10 @@ func Load() (Config, error) {
 			MaxConns:       reader.positiveInt("DB_MAX_CONNS", defaultDatabaseMaxConns),
 			ConnectTimeout: reader.positiveDuration("DB_CONNECT_TIMEOUT", defaultDatabaseConnectTimeout),
 		},
+		Auth: AuthConfig{
+			JWTSecret: reader.secret("JWT_SECRET", minJWTSecretLength),
+			JWTTTL:    reader.positiveDuration("JWT_TTL", defaultJWTTTL),
+		},
 	}
 
 	if err := errors.Join(reader.errs...); err != nil {
@@ -81,6 +93,15 @@ func (r *envReader) required(key string) string {
 	value := os.Getenv(key)
 	if value == "" {
 		r.errs = append(r.errs, fmt.Errorf("%s is required", key))
+	}
+
+	return value
+}
+
+func (r *envReader) secret(key string, minLength int) string {
+	value := os.Getenv(key)
+	if len(value) < minLength {
+		r.errs = append(r.errs, fmt.Errorf("%s must be at least %d characters long", key, minLength))
 	}
 
 	return value
